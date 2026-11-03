@@ -10,6 +10,7 @@ from typing import Dict, Any, Tuple
 import os
 import hashlib
 import json
+import time
 import urllib.request
 import urllib.error
 import pandas as pd
@@ -274,37 +275,49 @@ def query_qwen_compliance_intelligence(
             {"role": "user", "content": f"{context}\n\nUser Question/Instruction:\n{prompt}"}
         ],
         "temperature": 0.2,
-        "max_tokens": 300
+        "max_tokens": 180
     }
 
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) RetailAI/1.0"
-            }
-        )
-        with urllib.request.urlopen(req, timeout=12) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            content = result["choices"][0]["message"]["content"]
-            return {
-                "source": "Groq Cloud API",
-                "model": model,
-                "content": content
-            }
-    except Exception as e:
-        # Graceful fallback on network glitch or timeout
-        return {
-            "source": f"Offline Fallback (API Note: {str(e)[:60]})",
-            "model": "Deterministic Regulatory Matrix",
-            "content": (
-                f"**Automated Governance Finding ({report.get('risk_level')})**:\n\n"
-                f"• **Demographic Steering**: Steering index Pearson r={bias.get('pearson_correlation'):+.3f} with price spread of ${bias.get('price_spread'):.2f}. "
-                f"Four-Fifths standard status: {'VIOLATION' if bias.get('four_fifths_violation') else 'COMPLIANT'}.\n"
-                f"• **Privacy Enforcement**: {priv.get('breach_count')} unconsented user records isolated. Immediate GDPR Art. 17 purge required.\n"
-                f"• **Governance Score**: {report.get('governance_score')} / 100."
+    last_error = ""
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) RetailAI/1.0"
+                }
             )
-        }
+            with urllib.request.urlopen(req, timeout=12) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                content_resp = result["choices"][0]["message"]["content"]
+                return {
+                    "source": "Groq Cloud API (qwen/qwen3.8-27b)",
+                    "model": model,
+                    "content": content_resp
+                }
+        except urllib.error.HTTPError as he:
+            last_error = f"HTTP {he.code}"
+            if he.code == 429 and attempt == 0:
+                payload["max_tokens"] = 120
+                time.sleep(2.5)
+                continue
+            break
+        except Exception as e:
+            last_error = str(e)[:60]
+            break
+
+    # Graceful fallback on network glitch or timeout
+    return {
+        "source": f"Offline Fallback (API Note: {last_error})",
+        "model": "Deterministic Regulatory Matrix",
+        "content": (
+            f"**Automated Governance Finding ({report.get('risk_level')})**:\n\n"
+            f"• **Demographic Steering**: Steering index Pearson r={bias.get('pearson_correlation'):+.3f} with price spread of ${bias.get('price_spread'):.2f}. "
+            f"Four-Fifths standard status: {'VIOLATION' if bias.get('four_fifths_violation') else 'COMPLIANT'}.\n"
+            f"• **Privacy Enforcement**: {priv.get('breach_count')} unconsented user records isolated. Immediate GDPR Art. 17 purge required.\n"
+            f"• **Governance Score**: {report.get('governance_score')} / 100."
+        )
+    }

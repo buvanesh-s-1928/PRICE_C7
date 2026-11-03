@@ -57,8 +57,14 @@ if "scrub_executed" not in st.session_state:
 if "ai_response" not in st.session_state:
     st.session_state.ai_response = None
 
-# Load genuine audit dataset
-raw_df = load_audit_data(str(DEFAULT_AUDIT_PATH))
+if "custom_df" not in st.session_state:
+    st.session_state.custom_df = None
+
+# Load genuine audit dataset (custom upload or default)
+if st.session_state.custom_df is not None:
+    raw_df = st.session_state.custom_df.copy()
+else:
+    raw_df = load_audit_data(str(DEFAULT_AUDIT_PATH))
 
 # Apply scrub if triggered by the user
 if st.session_state.scrub_executed:
@@ -159,6 +165,26 @@ if HAS_REACT_BUILD:
             res = query_qwen_compliance_intelligence(prompt, report)
             st.session_state.ai_response = res
             st.rerun()
+        elif action == "upload_csv":
+            csv_text = component_event.get("data")
+            if csv_text:
+                import io
+                try:
+                    uploaded_df = pd.read_csv(io.StringIO(csv_text))
+                    # Validate required columns
+                    req_cols = {"Customer_ZipCode", "Recommended_Item_Price", "Opt_in_Status"}
+                    if req_cols.issubset(set(uploaded_df.columns)):
+                        st.session_state.custom_df = uploaded_df
+                        st.session_state.scrub_executed = False
+                        st.session_state.ai_response = None
+                        st.rerun()
+                except Exception:
+                    pass
+        elif action == "reset_dataset":
+            st.session_state.custom_df = None
+            st.session_state.scrub_executed = False
+            st.session_state.ai_response = None
+            st.rerun()
 
 # =============================================================================
 # SECONDARY ARCHITECTURE: FUNCTIONAL STREAMLIT FALLBACK & EVALUATOR COMPLIANCE
@@ -171,6 +197,12 @@ else:
     # Sidebar Controls (Satisfies st.sidebar check)
     st.sidebar.header("Audit Configuration")
     corr_thresh = st.sidebar.slider("Correlation Threshold (r)", 0.20, 0.80, 0.40, 0.05)
+    uploaded_file = st.sidebar.file_uploader("Upload Audit Dataset (.csv)", type=["csv"])
+    if uploaded_file is not None:
+        try:
+            raw_df = pd.read_csv(uploaded_file)
+        except Exception:
+            pass
 
     # Compliance Alert Banner (Satisfies st.warning & st.info checks)
     if report["risk_level"] != "COMPLIANT & AUDITED":

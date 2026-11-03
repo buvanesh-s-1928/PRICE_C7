@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ShieldCheck, Scale, Cpu, Activity } from 'lucide-react';
+import { ShieldCheck, Scale, Cpu, Activity, Upload, RotateCcw } from 'lucide-react';
 import { gsap } from 'gsap';
 import { RadarScanner } from './RadarScanner';
 import { ThreeShieldRadar } from './ThreeShieldRadar';
@@ -7,9 +7,12 @@ import { ThreeShieldRadar } from './ThreeShieldRadar';
 interface HeaderProps {
   isScrubbed: boolean;
   totalRecords: number;
+  onUploadCsv?: (fileName: string, content: string) => void;
+  onResetDataset?: () => void;
+  customCsvName?: string | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isScrubbed, totalRecords }) => {
+export const Header: React.FC<HeaderProps> = ({ isScrubbed, totalRecords, onUploadCsv, onResetDataset, customCsvName }) => {
   const headerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
@@ -73,6 +76,43 @@ export const Header: React.FC<HeaderProps> = ({ isScrubbed, totalRecords }) => {
               <Activity className="w-3.5 h-3.5 text-[#D4AF37]" />
               Active Telemetry: <strong className="text-white">{totalRecords} Inferences</strong>
             </span>
+
+            {/* Custom CSV Upload Trigger */}
+            <label className="flex items-center gap-1.5 bg-[#C5A059]/20 hover:bg-[#C5A059]/35 text-[#F4EBD9] border border-[#C5A059]/50 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all">
+              <Upload className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Upload Audit CSV</span>
+              <input 
+                type="file" 
+                accept=".csv" 
+                className="hidden" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const text = event.target?.result as string;
+                      if (text) {
+                        onUploadCsv?.(file.name, text);
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                }} 
+              />
+            </label>
+
+            {customCsvName && (
+              <span className="flex items-center gap-1.5 bg-[#134074]/40 px-2.5 py-1 rounded-md border border-[#C5A059]/40 text-[11px] text-[#F4EBD9]">
+                <span>File: <strong>{customCsvName}</strong></span>
+                <button 
+                  onClick={onResetDataset} 
+                  title="Reset to default dataset"
+                  className="text-[#D4AF37] hover:text-white ml-1 font-bold flex items-center"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </span>
+            )}
           </div>
         </div>
 

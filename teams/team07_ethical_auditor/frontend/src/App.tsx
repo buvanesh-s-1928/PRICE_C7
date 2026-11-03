@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("bias");
   const [isScrubbed, setIsScrubbed] = useState<boolean>(false);
   const [streamlitArgs, setStreamlitArgs] = useState<StreamlitArgs | null>(null);
+  const [customCsvName, setCustomCsvName] = useState<string | null>(null);
 
   // Initialize Streamlit component lifecycle
   useEffect(() => {
@@ -189,6 +190,18 @@ export const App: React.FC = () => {
     Streamlit.setComponentValue({ action: "query_ai", prompt, timestamp: Date.now() });
   };
 
+  // CSV Upload handler
+  const handleUploadCsv = (fileName: string, csvContent: string) => {
+    setCustomCsvName(fileName);
+    Streamlit.setComponentValue({ action: "upload_csv", data: csvContent, timestamp: Date.now() });
+  };
+
+  // Reset Dataset handler
+  const handleResetDataset = () => {
+    setCustomCsvName(null);
+    Streamlit.setComponentValue({ action: "reset_dataset", timestamp: Date.now() });
+  };
+
   const tabs = [
     { id: "bias", label: "Algorithmic Price-Steering", icon: TrendingUp },
     { id: "privacy", label: "Privacy Consent & Vault", icon: Shield },
@@ -203,6 +216,9 @@ export const App: React.FC = () => {
       <Header 
         isScrubbed={isScrubbed} 
         totalRecords={activeRecords.length} 
+        onUploadCsv={handleUploadCsv}
+        onResetDataset={handleResetDataset}
+        customCsvName={customCsvName}
       />
 
       {/* 2. Top Compliance Alert Banner */}

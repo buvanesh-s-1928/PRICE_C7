@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Send, Copy, Check, Scale, BookOpen, AlertOctagon } from 'lucide-react';
 import type { ComplianceReport } from '../types';
 
@@ -22,6 +22,14 @@ export const CopilotTab: React.FC<CopilotTabProps> = ({
   const [localResponse, setLocalResponse] = useState(aiResponse);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Sync state whenever genuine AI response arrives from Streamlit / Groq
+  useEffect(() => {
+    if (aiResponse) {
+      setLocalResponse(aiResponse);
+      setIsLoading(false);
+    }
+  }, [aiResponse]);
+
   const defaultSynthesis = (
     `**Executive AI Legal Evaluation (${report.risk_level})**:\n\n` +
     `1. **Demographic Proxy Price Steering (EU AI Act Title III Annex III)**: The recommendation engine's Pearson correlation coefficient of ${report.bias.pearson_correlation > 0 ? '+' : ''}${report.bias.pearson_correlation.toFixed(3)} (p < 0.0001) confirms statistically significant steering against customer zip codes. With an empirical Disparate Impact Ratio of ${report.bias.disparate_impact_ratio.toFixed(2)}, the model breaches the EEOC Four-Fifths fairness benchmark.\n\n` +
@@ -40,21 +48,21 @@ export const CopilotTab: React.FC<CopilotTabProps> = ({
   const handleTriggerAction = (promptText: string) => {
     setIsLoading(true);
     if (onQueryAi) {
+      // Dispatches genuine query to Streamlit / Groq Cloud API
       onQueryAi(promptText);
+    } else {
+      // Standalone browser fallback
+      setTimeout(() => {
+        setLocalResponse({
+          model: "qwen/qwen3.8-27b",
+          source: "Offline Deterministic Matrix",
+          content: promptText.includes("debiasing") 
+            ? `**Technical Debiasing Protocol (Qwen 3.8 27B)**:\n\n1. **Demographic Decoupling**: Introduce gradient reversal layer penalizing correlations with zip code proxies.\n2. **EEOC Four-Fifths Floor**: Adjust calibration weights to ensure min/max price ratio exceeds 0.80.\n3. **Consent Filter**: Block inferences without verified GDPR opt-in consent.`
+            : defaultSynthesis
+        });
+        setIsLoading(false);
+      }, 500);
     }
-    // Simulate immediate low-latency response if standalone
-    setTimeout(() => {
-      setLocalResponse({
-        model: "qwen/qwen3.8-27b",
-        source: "Groq Cloud LPU",
-        content: promptText.includes("debiasing") 
-          ? `**Technical Debiasing Engineering Protocol (Qwen 3.8 27B)**:\n\n1. **Adversarial Demographic Decoupling**: Add an adversarial discriminator branch to the recommender head penalizing correlation between internal hidden states and zip code proxies (target Pearson |r| < 0.15).\n2. **EEOC Four-Fifths Calibration**: Clamp minimum price recommendation floor such that (Min Zip Mean) / (Max Zip Mean) >= 0.85.\n3. **Consent Token Enforcement**: Route requests through an upstream middleware rejecting inference requests without a valid GDPR Opt-In JWT token.`
-          : promptText.includes("liability")
-          ? `**Corporate Liability & Regulatory Exposure Assessment**:\n\n• **GDPR Art. 83**: Maximum administrative fines up to €20M or 4% of global annual turnover for unlawful consent processing (${report.privacy.breach_count} non-opted-in records detected).\n• **EU AI Act Title VIII**: High-risk AI systems deployed with unmitigated demographic bias face mandatory suspension and administrative penalties.\n• **Remediation**: Immediate execution of the automated GDPR data scrub eliminates active non-consented liability.`
-          : defaultSynthesis
-      });
-      setIsLoading(false);
-    }, 600);
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
