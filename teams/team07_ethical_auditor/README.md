@@ -4,9 +4,10 @@
 - Track: AI Ethics, Bias Detection and Regulatory Compliance
 - Application Name: Ethical AI Auditor for Retail
 - Team Members:
-  - Member 1: [Full Name (@github_handle)]
-  - Member 2: [Full Name (@github_handle)]
-  - Member 3: [Full Name (@github_handle)]
+- Mithra Dharshini R ([@mithradharshini](https://github.com/mithradharshini))
+- Pranav V S ([@pranav5168](https://github.com/pranav5168))
+- Akshaya Elango ([@akshaya118-jpg](https://github.com/akshaya118-jpg))
+- Buvanesh S ([@buvanesh-s-1928](https://github.com/buvanesh-s-1928))
 
 ---
 
