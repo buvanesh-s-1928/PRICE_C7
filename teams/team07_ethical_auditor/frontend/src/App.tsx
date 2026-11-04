@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Shield, Bot, Flame, Award } from 'lucide-react';
+import { TrendingUp, Shield, Bot, Flame, Award, FileSpreadsheet, Upload, RotateCcw } from 'lucide-react';
 import { Streamlit } from 'streamlit-component-lib';
 import { Header } from './components/Header';
 import { AlertBanner } from './components/AlertBanner';
@@ -31,6 +31,9 @@ export const App: React.FC = () => {
         setStreamlitArgs(customEvent.detail.args);
         if (customEvent.detail.args.scrub_executed !== undefined) {
           setIsScrubbed(customEvent.detail.args.scrub_executed);
+        }
+        if (customEvent.detail.args.custom_file_name !== undefined) {
+          setCustomCsvName(customEvent.detail.args.custom_file_name);
         }
       }
       Streamlit.setFrameHeight();
@@ -193,7 +196,7 @@ export const App: React.FC = () => {
   // CSV Upload handler
   const handleUploadCsv = (fileName: string, csvContent: string) => {
     setCustomCsvName(fileName);
-    Streamlit.setComponentValue({ action: "upload_csv", data: csvContent, timestamp: Date.now() });
+    Streamlit.setComponentValue({ action: "upload_csv", fileName, data: csvContent, timestamp: Date.now() });
   };
 
   // Reset Dataset handler
@@ -221,7 +224,76 @@ export const App: React.FC = () => {
         customCsvName={customCsvName}
       />
 
-      {/* 2. Top Compliance Alert Banner */}
+      {/* 2. Dataset Ingestion & Active Source Bar */}
+      <div className="bg-white rounded-xl border border-[#C5A059]/30 p-4 mb-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-[#0B2545]/5 border border-[#C5A059]/30 text-[#0B2545]">
+            <FileSpreadsheet className="w-5 h-5 text-[#C5A059]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#0B2545] font-serif-royal">
+                Active Telemetry Source:
+              </span>
+              {customCsvName ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#C5A059]/15 text-[#7A5B15] border border-[#C5A059]/40 px-2 py-0.5 rounded">
+                  Custom File: {customCsvName} ({activeRecords.length} Inferences)
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#134074]/10 text-[#134074] border border-[#134074]/20 px-2 py-0.5 rounded">
+                  Baseline Dataset (data/audit_dataset.csv • {activeRecords.length} Inferences)
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#5C677D] mt-0.5">
+              {customCsvName 
+                ? "Currently auditing custom uploaded telemetry. Baseline dataset is preserved and can be restored at any time."
+                : "Auditing enterprise baseline telemetry. Upload any custom retail pricing CSV to audit demographic bias and privacy consent."
+              }
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 self-stretch md:self-auto justify-end">
+          {/* Upload Button */}
+          <label className="flex items-center gap-2 bg-[#0B2545] hover:bg-[#134074] text-white text-xs font-semibold px-4 py-2 rounded-lg border border-[#C5A059] shadow-sm cursor-pointer transition-all">
+            <Upload className="w-4 h-4 text-[#D4AF37]" />
+            <span>Upload Custom CSV</span>
+            <input 
+              type="file" 
+              accept=".csv" 
+              className="hidden" 
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    const text = event.target?.result as string;
+                    if (text) {
+                      handleUploadCsv(file.name, text);
+                    }
+                  };
+                  reader.readAsText(file);
+                }
+              }} 
+            />
+          </label>
+
+          {/* Restore Baseline Button */}
+          {customCsvName && (
+            <button
+              onClick={handleResetDataset}
+              className="flex items-center gap-1.5 bg-[#FAF7F2] hover:bg-[#F4EBD9] text-[#0B2545] text-xs font-semibold px-3 py-2 rounded-lg border border-[#C5A059]/40 transition-all"
+              title="Restore baseline audit_dataset.csv"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#C5A059]" />
+              <span>Restore Baseline CSV</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Top Compliance Alert Banner */}
       <AlertBanner report={report} />
 
       {/* 3. Top Executive Metric Cards */}

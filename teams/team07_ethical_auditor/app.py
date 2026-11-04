@@ -145,6 +145,7 @@ if HAS_REACT_BUILD:
         cert_metadata=clean_cert,
         ai_response=clean_ai_resp,
         scrub_executed=bool(st.session_state.scrub_executed),
+        custom_file_name=st.session_state.get("custom_file_name", None),
         default=None,
         key="ethical_ai_auditor_app"
     )
@@ -167,14 +168,31 @@ if HAS_REACT_BUILD:
             st.rerun()
         elif action == "upload_csv":
             csv_text = component_event.get("data")
+            file_name = component_event.get("fileName", "custom_dataset.csv")
             if csv_text:
                 import io
                 try:
                     uploaded_df = pd.read_csv(io.StringIO(csv_text))
-                    # Validate required columns
+                    # Flexible column mapping
+                    col_map = {}
+                    for col in uploaded_df.columns:
+                        c_lower = col.strip().lower()
+                        if "zip" in c_lower:
+                            col_map[col] = "Customer_ZipCode"
+                        elif "price" in c_lower:
+                            col_map[col] = "Recommended_Item_Price"
+                        elif "opt" in c_lower:
+                            col_map[col] = "Opt_in_Status"
+                    if col_map:
+                        uploaded_df = uploaded_df.rename(columns=col_map)
+
                     req_cols = {"Customer_ZipCode", "Recommended_Item_Price", "Opt_in_Status"}
                     if req_cols.issubset(set(uploaded_df.columns)):
+                        uploaded_df["Customer_ZipCode"] = uploaded_df["Customer_ZipCode"].astype(int)
+                        uploaded_df["Recommended_Item_Price"] = uploaded_df["Recommended_Item_Price"].astype(float)
+                        uploaded_df["Opt_in_Status"] = uploaded_df["Opt_in_Status"].astype(str).str.lower().isin(["true", "1", "yes", "t"])
                         st.session_state.custom_df = uploaded_df
+                        st.session_state.custom_file_name = file_name
                         st.session_state.scrub_executed = False
                         st.session_state.ai_response = None
                         st.rerun()
@@ -182,6 +200,7 @@ if HAS_REACT_BUILD:
                     pass
         elif action == "reset_dataset":
             st.session_state.custom_df = None
+            st.session_state.custom_file_name = None
             st.session_state.scrub_executed = False
             st.session_state.ai_response = None
             st.rerun()
